@@ -14,3 +14,5 @@ This is simply the setup I wanted for myself.  If you find it useful, let me kno
 
 There are also some bookmarks at the bottom of the page to useful pages on the web.
 
+Note: Requires a Chrome Browser to work correctly.  Give it access to Midi.
+
