@@ -11,6 +11,10 @@ This is simply the setup I wanted for myself.  If you find it useful, let me kno
 * You can favorite the ones you like.
 * You can adjust the parameters of the voice both on screen and with your attached keyboard.
 * You can create a performance set of patches and switch patches quickly.
+* Load the patch to your Volca with a sample chord to hear it.
+* Load the patch to your Volca quietly.
+* Download the Sysex patch file.
+* Create a set of favorite set of 32 patches to load directly.
 
 There are also some bookmarks at the bottom of the page to useful pages on the web.
 
