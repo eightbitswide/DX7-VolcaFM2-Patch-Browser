@@ -2,6 +2,7 @@
 
 Created for myself for my Launchkey mk2 49key keyboard and my Korg Volca FM2. 
 
+The "Release" .zip contains the index.html file and
 I've also included a set of Sysex files which are a "de-duplication" set of patches.
 
 This is simply the setup I wanted for myself.  If you find it useful, let me know.
