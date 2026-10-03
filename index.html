@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DX7 / Volca FM 2 Patch Browser</title>
+  <style>
+    :root {
+      --bg: #121417;
+      --card-bg: #1a1e24;
+      --card-hover: #222730;
+      --border: #2c333e;
+      --text: #e1e7ec;
+      --muted: #8b99a8;
+      --accent: #00d2be;
+      --accent-hover: #00b3a2;
+      --highlight: #283340;
+
+      /* Action Button Palette */
+      --btn-green: #10b981;
+      --btn-green-light: #34d399;
+      --btn-green-bg: #13271f;
+
+      --btn-blue: #0ea5e9;
+      --btn-blue-light: #38bdf8;
+      --btn-blue-bg: #112536;
+
+      --btn-amber: #f59e0b;
+      --btn-amber-light: #fbbf24;
+      --btn-amber-bg: #2a1f11;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
+    body { background-color: var(--bg); color: var(--text); padding: 24px 24px 170px 24px; font-size: 14px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header { margin-bottom: 14px; }
+    h1 { font-size: 1.6rem; color: var(--accent); margin-bottom: 6px; letter-spacing: 0.5px; }
+    p.subtitle { color: var(--muted); margin-bottom: 16px; }
+
+    /* Top Search & Filter Bar */
+    .controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; align-items: stretch; }
+    input[type="text"] {
+      flex: 1; min-width: 260px; background: var(--card-bg); border: 1px solid var(--border);
+      color: #fff; padding: 12px 16px; border-radius: 6px; font-size: 14px; outline: none;
+    }
+    input[type="text"]:focus { border-color: var(--accent); }
+
+    /* Square Toolbar Buttons */
+    .controls-action-btn {
+      background: var(--card-bg); border: 1px solid var(--border); color: var(--text);
+      padding: 0 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+      transition: all 0.15s ease-in-out; display: inline-flex; align-items: center; justify-content: center;
+      white-space: nowrap;
+    }
+    .controls-action-btn.fav-btn { border-color: var(--btn-amber); color: var(--btn-amber-light); }
+    .controls-action-btn.fav-btn:hover { background: var(--btn-amber); color: #000; box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+    .controls-action-btn.fav-btn.active-fav { background: var(--btn-amber); color: #000; box-shadow: 0 0 12px rgba(245, 158, 11, 0.7); }
+    
+    .controls-action-btn.export-btn { background: var(--btn-amber-bg); border-color: var(--btn-amber); color: var(--btn-amber-light); }
+    .controls-action-btn.export-btn:hover { background: var(--btn-amber); color: #000; box-shadow: 0 0 12px rgba(245, 158, 11, 0.7); }
+    .controls-action-btn.export-btn:disabled { opacity: 0.6; cursor: wait; }
+
+    /* Tags */
+    .tag-section-title { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; margin: 12px 0 6px 0; }
+    .tag-container { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .tag-btn {
+      background: var(--card-bg); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 12px; border-radius: 16px; cursor: pointer; font-size: 12px; transition: 0.15s;
+    }
+    .tag-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .tag-btn.active { background: var(--accent); color: #000; font-weight: bold; border-color: var(--accent); }
+    .tag-btn.clear { border-color: #ff5c5c; color: #ff5c5c; }
+    .tag-btn.clear:hover { background: #ff5c5c; color: #000; }
+
+    /* Floating Tab on the Right Screen Edge */
+    .tone-tab-trigger {
+      position: fixed; right: 0; top: 220px; background: var(--card-bg); border: 1px solid var(--border);
+      border-right: none; border-radius: 8px 0 0 8px; color: var(--accent); padding: 12px 10px;
+      cursor: pointer; z-index: 990; display: flex; flex-direction: column; align-items: center; gap: 6px;
+      box-shadow: -4px 0 18px rgba(0, 0, 0, 0.45); transition: all 0.15s ease-in-out; user-select: none;
+    }
+    .tone-tab-trigger:hover { background: #222933; border-color: var(--accent); color: #fff; transform: translateX(-3px); }
+    .tone-tab-text { writing-mode: vertical-rl; text-orientation: mixed; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+
+    /* Drawer Backdrop Scrim */
+    .drawer-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(2px); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+    .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+
+    /* Side Pop-In Drawer */
+    .side-drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; width: 330px; max-width: 86vw; background: rgba(20, 24, 30, 0.98);
+      backdrop-filter: blur(14px); border-left: 1px solid var(--border); box-shadow: -10px 0 35px rgba(0, 0, 0, 0.7);
+      z-index: 1001; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex; flex-direction: column; padding: 20px; overflow-y: auto;
+    }
+    .side-drawer.open { transform: translateX(0); }
+
+    .drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .drawer-title { font-size: 13px; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .drawer-close-btn { background: transparent; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; padding: 4px; border-radius: 4px; transition: color 0.15s; }
+    .drawer-close-btn:hover { color: #ff5c5c; }
+    .drawer-subhead { font-size: 11px; color: var(--muted); margin-bottom: 14px; line-height: 1.4; }
+
+    /* Drawer Slider Cards */
+    .drawer-knob-list { display: flex; flex-direction: column; gap: 10px; }
+    .knob-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; display: flex; flex-direction: column; gap: 6px; transition: border-color 0.15s; }
+    .knob-card.active-knob { border-color: var(--accent); box-shadow: 0 0 10px rgba(0, 210, 190, 0.35); }
+    .knob-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+    .knob-label { font-weight: 600; color: #cbd5e1; }
+    .knob-val { font-family: monospace; color: var(--accent); font-weight: 700; }
+    .knob-slider { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: #273240; outline: none; cursor: pointer; }
+    .knob-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 6px var(--accent); }
+    .knob-hint { font-size: 9px; color: var(--muted); font-family: monospace; display: flex; justify-content: space-between; }
+
+    .stats { color: var(--muted); font-size: 12px; margin: 16px 0 10px 0; display: flex; justify-content: space-between; }
+    
+    .table-container { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { background: #15191e; color: var(--accent); padding: 12px 16px; font-weight: 600; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+    td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text); font-family: monospace; }
+    tr:hover { background: var(--highlight); }
+    .slot-badge { background: #26313d; color: var(--accent); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+    .bank-badge { color: #cbd5e1; font-weight: 500; text-decoration: underline; text-decoration-color: #475569; cursor: pointer; }
+    .bank-badge:hover { color: var(--accent); text-decoration-color: var(--accent); }
+    .source-text { color: var(--muted); font-size: 12px; }
+
+    /* Name Cell & Icon Buttons */
+    .patch-name-cell { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #fff; }
+    .star-btn { background: transparent; border: none; color: #4a5568; cursor: pointer; font-size: 15px; transition: all 0.15s; line-height: 1; padding: 2px; }
+    .star-btn:hover { color: var(--btn-amber-light); transform: scale(1.15); }
+    .star-btn.starred { color: var(--btn-amber); text-shadow: 0 0 8px rgba(245, 158, 11, 0.7); }
+
+    .dock-pin-btn { background: transparent; border: none; color: #4a5568; cursor: pointer; padding: 2px 4px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; line-height: 1; }
+    .dock-pin-btn:hover { color: var(--accent); transform: scale(1.15); }
+    .dock-pin-btn.pinned { color: var(--accent); }
+    .dock-pin-btn.pinned svg { fill: var(--accent); filter: drop-shadow(0 0 6px rgba(0, 210, 190, 0.8)); }
+
+    /* Action Buttons */
+    .action-btn-group { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+
+    .dl-btn { background: var(--btn-amber-bg); border: 1px solid var(--btn-amber); color: var(--btn-amber-light); padding: 5px 8px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; transition: all 0.15s ease-in-out; }
+    .dl-btn:hover { background: var(--btn-amber); color: #1a1100; box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+
+    .play-btn { background: var(--btn-blue-bg); border: 1px solid var(--btn-blue); color: var(--btn-blue-light); padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; transition: all 0.15s ease-in-out; }
+    .play-btn:hover { background: var(--btn-blue); color: #05141f; box-shadow: 0 0 10px rgba(14, 165, 233, 0.4); }
+    .play-btn:disabled { background: var(--btn-blue); color: #000; opacity: 1; border-color: var(--btn-blue); box-shadow: 0 0 14px rgba(14, 165, 233, 0.8); cursor: wait; }
+
+    .load-btn { background: var(--btn-green-bg); border: 1px solid var(--btn-green); color: var(--btn-green-light); padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; transition: all 0.15s ease-in-out; }
+    .load-btn:hover { background: var(--btn-green); color: #051a11; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+
+    .pagination { display: flex; justify-content: center; gap: 8px; margin: 18px 0 36px 0; align-items: center; }
+    .page-btn { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 4px; cursor: pointer; }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-btn:not(:disabled):hover { border-color: var(--accent); }
+    .page-info { color: var(--muted); font-size: 13px; }
+
+    /* Bottom Sections */
+    .bottom-section { border-top: 1px solid var(--border); padding-top: 24px; margin-top: 16px; display: flex; flex-direction: column; gap: 16px; }
+    .midi-panel { background: #15191e; border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .midi-status { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #ff5c5c; }
+    .status-dot.connected { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .midi-select-group { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+    select { background: var(--card-bg); border: 1px solid var(--border); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 13px; outline: none; }
+    select:focus { border-color: var(--accent); }
+
+    .resource-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+    .resource-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; text-decoration: none; color: var(--text); display: flex; flex-direction: column; gap: 2px; transition: all 0.15s ease-in-out; }
+    .resource-card:hover { background: var(--card-hover); border-color: var(--accent); transform: translateY(-1px); }
+    .resource-title { font-weight: 600; color: var(--accent); font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
+    .resource-desc { font-size: 11px; color: var(--muted); line-height: 1.3; }
+
+    /* Sticky Live Performance Dock */
+    .dock-container { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(18, 22, 28, 0.95); backdrop-filter: blur(10px); border-top: 1px solid var(--border); padding: 10px 24px; z-index: 999; box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.6); }
+    .dock-bar { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
+    .dock-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .dock-title { color: var(--accent); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .dock-actions { display: flex; align-items: center; gap: 12px; }
+    .dock-hint { color: var(--muted); font-family: monospace; }
+    .dock-clear-btn { background: transparent; border: 1px solid #3d4754; color: var(--muted); padding: 2px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; transition: 0.15s; }
+    .dock-clear-btn:hover { border-color: #ff5c5c; color: #ff5c5c; }
+    .dock-tiles { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; align-items: center; }
+    .dock-tiles::-webkit-scrollbar { height: 4px; }
+    .dock-tiles::-webkit-scrollbar-thumb { background: #2c333e; border-radius: 2px; }
+
+    .dock-tile { background: var(--card-bg); border: 1px solid #333d4b; border-radius: 6px; padding: 0 10px; height: 30px; max-height: 30px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; transition: background 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; user-select: none; box-sizing: border-box; flex-shrink: 0; line-height: 1; }
+    .dock-tile:hover { border-color: var(--btn-green); background: #232c37; box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+    .dock-tile.active-trigger { background: var(--btn-green) !important; border-color: var(--btn-green) !important; color: #000 !important; box-shadow: 0 0 16px rgba(16, 185, 129, 0.9) !important; }
+    .dock-tile.active-trigger .tile-key, .dock-tile.active-trigger .tile-name { color: #000 !important; }
+    .tile-key { background: #273240; color: var(--accent); font-weight: bold; font-size: 10px; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
+    .tile-name { font-size: 12px; font-weight: 600; color: #fff; }
+    .tile-play-btn { background: transparent; border: none; color: var(--btn-blue); cursor: pointer; font-size: 11px; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; transition: 0.15s; }
+    .tile-play-btn:hover { background: var(--btn-blue); color: #000; }
+    .tile-del-btn { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 14px; width: 16px; height: 18px; display: inline-flex; align-items: center; justify-content: center; }
+    .tile-del-btn:hover { color: #ff5c5c; }
+    .dock-empty-msg { color: var(--muted); font-size: 12px; font-style: italic; padding: 6px 0; }
+  </style>
+</head>
+<body>
+
+<!-- Floating Right Edge Trigger Tab -->
+<div class="tone-tab-trigger" onclick="toggleToneDrawer()" title="Open Real-Time Tone Shaping Sliders">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line>
+    <line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line>
+    <line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line>
+    <line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line>
+    <line x1="17" y1="16" x2="23" y2="16"></line>
+  </svg>
+  <span class="tone-tab-text">Tone Sliders</span>
+</div>
+
+<!-- Backdrop Scrim -->
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeToneDrawer()"></div>
+
+<!-- Slide-Out Tone Shaping Drawer -->
+<div class="side-drawer" id="toneDrawer">
+  <div class="drawer-header">
+    <div class="drawer-title">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line>
+        <line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line>
+        <line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line>
+        <line x1="17" y1="16" x2="23" y2="16"></line>
+      </svg>
+      Tone Shaping
+    </div>
+    <button class="drawer-close-btn" onclick="closeToneDrawer()" title="Close Panel">×</button>
+  </div>
+  <div class="drawer-subhead">LaunchKey Sliders ➔ Volca FM 2 parameters. Pin to Dock to save tweaks.</div>
+
+  <div class="drawer-knob-list">
+    <div class="knob-card" id="knobCard_42">
+      <div class="knob-header"><span class="knob-label">1. Mod Attack</span><span class="knob-val" id="val_42">64</span></div>
+      <input type="range" class="knob-slider" id="slider_42" min="0" max="127" value="64" data-val="64" oninput="handleSliderUI(42, this.value)">
+      <div class="knob-hint"><span>Slider 1</span><span>CC 42</span></div>
+    </div>
+    <div class="knob-card" id="knobCard_43">
+      <div class="knob-header"><span class="knob-label">2. Mod Decay</span><span class="knob-val" id="val_43">64</span></div>
+      <input type="range" class="knob-slider" id="slider_43" min="0" max="127" value="64" data-val="64" oninput="handleSliderUI(43, this.value)">
+      <div class="knob-hint"><span>Slider 2</span><span>CC 43</span></div>
+    </div>
+    <div class="knob-card" id="knobCard_44">
+      <div class="knob-header"><span class="knob-label">3. Carr Attack</span><span class="knob-val" id="val_44">64</span></div>
+      <input type="range" class="knob-slider" id="slider_44" min="0" max="127" value="64" data-val="64" oninput="handleSliderUI(44, this.value)">
+      <div class="knob-hint"><span>Slider 3</span><span>CC 44</span></div>
+    </div>
+    <div class="knob-card" id="knobCard_45">
+      <div class="knob-header"><span class="knob-label">4. Carr Decay</span><span class="knob-val" id="val_45">64</span></div>
+      <input type="range" class="knob-slider" id="slider_45" min="0" max="127" value="64" data-val="64" oninput="handleSliderUI(45, this.value)">
+      <div class="knob-hint"><span>Slider 4</span><span>CC 45</span></div>
+    </div>
+    <div class="knob-card" id="knobCard_46">
+      <div class="knob-header"><span class="knob-label">5. LFO Rate</span><span class="knob-val" id="val_46">64</span></div>
+      <input type="range" class="knob-slider" id="slider_46" min="0" max="127" value="64" data-val="64" oninput="handleSliderUI(46, this.value)">
+      <div class="knob-hint"><span>Slider 5</span><span>CC 46</span></div>
+    </div>
+    <div class="knob-card" id="knobCard_47">
+      <div class="knob-header"><span class="knob-label">6. LFO Depth</span><span class="knob-val" id="val_47">0</span></div>
+      <input type="range" class="knob-slider" id="slider_47" min="0" max="127" value="0" data-val="0" oninput="handleSliderUI(47, this.value)">
+      <div class="knob-hint"><span>Slider 6</span><span>CC 47</span></div>
+    </div>
+    <div class="knob-card" id="knobCard_48">
+      <div class="knob-header"><span class="knob-label">7. Algorithm</span><span class="knob-val" id="val_48">1</span></div>
+      <input type="range" class="knob-slider" id="slider_48" min="0" max="127" value="0" data-val="0" oninput="handleSliderUI(48, this.value)">
+      <div class="knob-hint"><span>Slider 7</span><span>CC 48 (1–32)</span></div>
+    </div>
+    <div class="knob-card" id="knobCard_40">
+      <div class="knob-header"><span class="knob-label">8. Transpose</span><span class="knob-val" id="val_40">0</span></div>
+      <input type="range" class="knob-slider" id="slider_40" min="0" max="127" value="64" data-val="64" oninput="handleSliderUI(40, this.value)">
+      <div class="knob-hint"><span>Slider 8</span><span>CC 40</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <header>
+    <h1>DX7 / Volca FM 2 Patch Browser</h1>
+    <p class="subtitle">Search your offline archive, audition over MIDI, download single .syx, or compile custom banks.</p>
+
+    <div class="controls">
+      <input type="text" id="search" placeholder="Search patches... (e.g. VICE | HAMMER or LOVE | JUMP)" autofocus>
+      <button class="controls-action-btn fav-btn" id="favFilterBtn" onclick="toggleFavFilter()" title="View Saved Library">★ Favorites (0)</button>
+      <button class="controls-action-btn export-btn" id="exportBankBtn" onclick="exportFavoritesBank()" style="visibility: hidden; opacity: 0; pointer-events: none;" title="Compile favorites into official 32-voice DX7 .syx cartridge files (Bank A / Bank B)">⬇ Export Bank (.syx)</button>
+    </div>
+
+    <div class="tag-section-title">Famous 80s Hits & Themes</div>
+    <div class="tag-container">
+      <button class="tag-btn" onclick="applyTag('LOVE | JUMP | HALEN')">Van Halen</button>
+      <button class="tag-btn" onclick="applyTag('VICE | HAMMER | CROCKETT')">Miami Vice / Jan Hammer</button>
+      <button class="tag-btn" onclick="applyTag('AXEL | FALTER | BEVERLY')">Axel F / Harold Faltermeyer</button>
+      <button class="tag-btn" onclick="applyTag('AFRICA | TOTO | ROSANNA')">Toto (Africa / Rosanna)</button>
+      <button class="tag-btn" onclick="applyTag('TAKE ON | A-HA')">a-ha (Take On Me)</button>
+      <button class="tag-btn" onclick="applyTag('JACKSON | BILLIE | THRILLER | BAD')">Michael Jackson</button>
+      <button class="tag-btn" onclick="applyTag('COLLINS | GENESIS | SUSSUDIO')">Phil Collins / Genesis</button>
+      <button class="tag-btn" onclick="applyTag('DEPECHE | MODE')">Depeche Mode</button>
+      <button class="tag-btn" onclick="applyTag('TOP GUN | DANGER')">Top Gun / Danger Zone</button>
+      <button class="tag-btn" onclick="applyTag('SHOUT | TEARS')">Tears For Fears</button>
+    </div>
+
+    <div class="tag-section-title">Classic 80s FM Categories</div>
+    <div class="tag-container">
+      <button class="tag-btn" onclick="applyTag('SOLID | LATELY')">Lately / Solid Bass</button>
+      <button class="tag-btn" onclick="applyTag('E.PIANO | RHODES | TINE')">DX Electric Piano</button>
+      <button class="tag-btn" onclick="applyTag('OBER | OBX | OB8')">Oberheim Emulations</button>
+      <button class="tag-btn" onclick="applyTag('BRASS | HORN')">80s Brass Stabs</button>
+      <button class="tag-btn" onclick="applyTag('PAD | WARM | ANALOG')">Analog Pads</button>
+      <button class="tag-btn" onclick="applyTag('BELL | TUBULAR | CHIME | MARIMBA')">Mallets & Bells</button>
+      <button class="tag-btn clear" onclick="clearFilters()">Clear Search</button>
+    </div>
+
+    <div class="stats">
+      <span id="matchCount">Loading database...</span>
+      <span id="pageCount"></span>
+    </div>
+  </header>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 190px;">Actions</th>
+          <th>Patch Name</th>
+          <th>Bank File (.syx)</th>
+          <th>Slot</th>
+          <th>Original Source</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="pagination">
+    <button class="page-btn" id="prevBtn" onclick="changePage(-1)">Previous</button>
+    <span class="page-info" id="pageLabel">Page 1</span>
+    <button class="page-btn" id="nextBtn" onclick="changePage(1)">Next</button>
+  </div>
+
+  <!-- Bottom Section: MIDI Controls & External Resources -->
+  <div class="bottom-section">
+    <div class="tag-section-title">Hardware MIDI Interfaces</div>
+    <div class="midi-panel">
+      <div class="midi-status">
+        <div class="status-dot" id="midiDot"></div>
+        <span id="midiStatusText">Connecting MIDI...</span>
+      </div>
+      <div class="midi-select-group">
+        <label for="midiInSelect">Controller (In):</label>
+        <select id="midiInSelect"><option value="">No MIDI inputs found</option></select>
+      </div>
+      <div class="midi-select-group">
+        <label for="midiOutSelect">Volca (Out):</label>
+        <select id="midiOutSelect"><option value="">No MIDI ports found</option></select>
+      </div>
+      <div class="midi-select-group">
+        <label for="midiChannelSelect">Channel:</label>
+        <select id="midiChannelSelect">
+          <option value="0" selected>Ch 1 (Default)</option>
+          <option value="1">Ch 2</option>
+          <option value="2">Ch 3</option>
+          <option value="3">Ch 4</option>
+          <option value="4">Ch 5</option>
+          <option value="5">Ch 6</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sticky Performance Dock -->
+<div class="dock-container">
+  <div class="dock-bar">
+    <div class="dock-header">
+      <span class="dock-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="17" x2="12" y2="22"></line>
+          <path d="M5 17h14v-1.5a2 2 0 0 0-1.1-1.8L16 12.5V5h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v7.5l-1.9 1.2A2 2 0 0 0 5 15.5V17z"></path>
+        </svg>
+        Live Performance Dock
+      </span>
+      <div class="dock-actions">
+        <span class="dock-hint">Click tile to ⚡ Load • Hotkeys [1–9]</span>
+        <button class="dock-clear-btn" onclick="clearDock()" title="Clear all patches from dock">Clear Dock</button>
+      </div>
+    </div>
+    <div class="dock-tiles" id="dockTiles"></div>
+  </div>
+</div>
+
+<script>
+  let allPatches = [];
+  let filteredPatches = [];
+  let currentPage = 1;
+  const PAGE_SIZE = 50;
+
+  let midiAccess = null;
+  let selectedOutput = null;
+  let selectedInput = null;
+  let bankCache = new Map();
+  let noteOffTimeout = null;
+  let noteOnTimeout = null;
+
+  let favorites = new Map();
+  let dockItems = new Map();
+  let favFilterActive = false;
+
+  // Drawer Toggle
+  function toggleToneDrawer() {
+    const drawer = document.getElementById('toneDrawer');
+    if (drawer.classList.contains('open')) closeToneDrawer();
+    else openToneDrawer();
+  }
+  function openToneDrawer() {
+    document.getElementById('toneDrawer').classList.add('open');
+    document.getElementById('drawerBackdrop').classList.add('open');
+  }
+  function closeToneDrawer() {
+    document.getElementById('toneDrawer').classList.remove('open');
+    document.getElementById('drawerBackdrop').classList.remove('open');
+  }
+
+  // Dual Mapping: Native sliders (40-48) and Knobs (21-28 fallback)
+  const incomingToVolcaMap = {
+    42: 42, 43: 43, 44: 44, 45: 45, 46: 46, 47: 47, 48: 48, 40: 40,
+    21: 42, 22: 43, 23: 44, 24: 45, 25: 46, 26: 47, 27: 48, 28: 40
+  };
+
+  function sendVolcaCC(targetVolcaCC, value) {
+    if (!selectedOutput) return;
+    const channel = parseInt(document.getElementById('midiChannelSelect').value, 10);
+    const valInt = parseInt(value, 10);
+    selectedOutput.send([0xB0 | channel, targetVolcaCC, valInt]);
+  }
+
+  function setSliderValue(ccNumber, valInt) {
+    const slider = document.getElementById(`slider_${ccNumber}`);
+    const valLabel = document.getElementById(`val_${ccNumber}`);
+    const card = document.getElementById(`knobCard_${ccNumber}`);
+    if (!slider || !valLabel) return;
+
+    slider.value = valInt;
+    slider.dataset.val = valInt; // store actual data value for pinning
+
+    if (ccNumber === 48) {
+      valLabel.innerText = Math.min(32, Math.floor((valInt / 128) * 32) + 1);
+    } else if (ccNumber === 40) {
+      valLabel.innerText = valInt - 64;
+    } else {
+      valLabel.innerText = valInt;
+    }
+
+    if (card) {
+      card.classList.add('active-knob');
+      setTimeout(() => card.classList.remove('active-knob'), 180);
+    }
+  }
+
+  // Triggered by manual on-screen dragging
+  function handleSliderUI(ccNumber, rawValue) {
+    const val = parseInt(rawValue, 10);
+    setSliderValue(ccNumber, val);
+    let targetVal = val;
+    if (ccNumber === 48) targetVal = Math.min(31, Math.floor((val / 128) * 32));
+    sendVolcaCC(ccNumber, targetVal);
+  }
+
+  function handleMidiInMessage(event) {
+    const status = event.data[0] & 0xF0;
+    const channel = parseInt(document.getElementById('midiChannelSelect').value, 10);
+
+    if (status === 0x90 || status === 0x80) {
+      if (selectedOutput) selectedOutput.send([status | channel, event.data[1], event.data[2]]);
+      return;
+    }
+
+    if (status === 0xB0) {
+      const ccNum = event.data[1];
+      const ccVal = event.data[2];
+
+      const targetVolcaCC = incomingToVolcaMap[ccNum];
+      if (targetVolcaCC !== undefined) {
+        setSliderValue(targetVolcaCC, ccVal);
+        let targetVal = ccVal;
+        if (targetVolcaCC === 48) targetVal = Math.min(31, Math.floor((ccVal / 128) * 32));
+        sendVolcaCC(targetVolcaCC, targetVal);
+      }
+    }
+  }
+
+  function getPatchKey(bank, slot) {
+    return `${String(bank).trim()}:${parseInt(slot, 10)}`;
+  }
+
+  function loadStorage() {
+    try {
+      const savedFavs = localStorage.getItem('volca_dx7_favs');
+      if (savedFavs) {
+        const arr = JSON.parse(savedFavs);
+        favorites = new Map(arr.map(f => [getPatchKey(f.bank, f.slot), f]));
+      }
+
+      const savedDock = localStorage.getItem('volca_dx7_dock');
+      if (savedDock) {
+        const arr = JSON.parse(savedDock);
+        dockItems = new Map(arr.map(d => [getPatchKey(d.bank, d.slot), d]));
+      }
+    } catch (e) {
+      console.error("Storage load error:", e);
+    }
+    updateFavoritesUI();
+    updateDockUI();
+  }
+
+  function toggleDock(bank, slot, name) {
+    const key = getPatchKey(bank, slot);
+    if (dockItems.has(key)) {
+      dockItems.delete(key);
+    } else {
+      // Snapshot the current position of all 8 tone sliders when pinning to dock
+      const tweaks = {};
+      [42, 43, 44, 45, 46, 47, 48, 40].forEach(cc => {
+        const slider = document.getElementById(`slider_${cc}`);
+        if (slider) tweaks[cc] = parseInt(slider.dataset.val || slider.value, 10);
+      });
+      dockItems.set(key, { bank, slot: parseInt(slot, 10), name, tweaks });
+    }
+    saveDock();
+    renderTable();
+  }
+
+  function saveDock() {
+    localStorage.setItem('volca_dx7_dock', JSON.stringify(Array.from(dockItems.values())));
+    updateDockUI();
+  }
+
+  function clearDock() {
+    dockItems.clear();
+    saveDock();
+    if (favFilterActive) filterData(document.getElementById('search').value);
+    else renderTable();
+    updateFavoritesUI();
+  }
+
+  function updateDockUI() {
+    const dock = document.getElementById('dockTiles');
+    if (!dock) return;
+    dock.innerHTML = '';
+
+    const list = Array.from(dockItems.values());
+    if (list.length === 0) {
+      dock.innerHTML = '<span class="dock-empty-msg">Dock is empty. Pin a patch to capture its tone tweaks into your setlist.</span>';
+      return;
+    }
+
+    list.forEach((item, idx) => {
+      const tile = document.createElement('div');
+      tile.className = 'dock-tile';
+      tile.id = `dockTile_${idx}`;
+      tile.title = `Click to load "${item.name}" with saved tone tweaks`;
+
+      const keyLabel = idx < 9 ? `<span class="tile-key">[${idx + 1}]</span>` : '';
+      
+      const safeTweaksStr = escapeHtml(JSON.stringify(item.tweaks || null));
+
+      tile.innerHTML = `
+        ${keyLabel}
+        <span class="tile-name">${escapeHtml(item.name)}</span>
+        <button class="tile-play-btn" title="Audition Chord" onclick="event.stopPropagation(); transferPatch('${escapeHtml(item.bank)}', ${item.slot}, true, this, ${safeTweaksStr})">▶</button>
+        <button class="tile-del-btn" title="Unpin from dock" onclick="event.stopPropagation(); toggleDock('${escapeHtml(item.bank)}', ${item.slot}, '${escapeHtml(item.name)}')">×</button>
+      `;
+
+      tile.onclick = () => {
+        flashTile(tile);
+        transferPatch(item.bank, item.slot, false, null, item.tweaks || null);
+      };
+
+      dock.appendChild(tile);
+    });
+  }
+
+  function saveFavorites() {
+    localStorage.setItem('volca_dx7_favs', JSON.stringify(Array.from(favorites.values())));
+    updateFavoritesUI();
+  }
+
+  function toggleFavorite(bank, slot, name) {
+    const key = getPatchKey(bank, slot);
+    if (favorites.has(key)) {
+      favorites.delete(key);
+    } else {
+      favorites.set(key, { bank, slot: parseInt(slot, 10), name });
+    }
+    saveFavorites();
+    if (favFilterActive) filterData(document.getElementById('search').value);
+    else renderTable();
+  }
+
+  function updateFavoritesUI() {
+    const favBtn = document.getElementById('favFilterBtn');
+    if (favBtn) {
+      favBtn.innerText = `★ Favorites (${favorites.size})`;
+      if (favFilterActive) favBtn.classList.add('active-fav');
+      else favBtn.classList.remove('active-fav');
+    }
+    const exportBtn = document.getElementById('exportBankBtn');
+    if (exportBtn) {
+      if (favFilterActive) {
+        exportBtn.style.visibility = 'visible';
+        exportBtn.style.opacity = '1';
+        exportBtn.style.pointerEvents = 'auto';
+        if (favorites.size === 0) exportBtn.innerText = "⬇ Export Bank (.syx)";
+        else if (favorites.size <= 32) exportBtn.innerText = `⬇ Export Bank (${favorites.size}/32)`;
+        else exportBtn.innerText = `⬇ Export ${Math.ceil(favorites.size / 32)} Banks (${favorites.size} Patches)`;
+      } else {
+        exportBtn.style.visibility = 'hidden';
+        exportBtn.style.opacity = '0';
+        exportBtn.style.pointerEvents = 'none';
+      }
+    }
+  }
+
+  function toggleFavFilter() {
+    favFilterActive = !favFilterActive;
+    updateFavoritesUI();
+    filterData(document.getElementById('search').value);
+  }
+
+  function clearFilters() {
+    document.getElementById('search').value = '';
+    favFilterActive = false;
+    updateFavoritesUI();
+    filterData('');
+  }
+
+  function flashTile(el) {
+    el.classList.add('active-trigger');
+    setTimeout(() => el.classList.remove('active-trigger'), 400);
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeToneDrawer();
+      return;
+    }
+    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
+      return;
+    }
+    const num = parseInt(e.key, 10);
+    if (!isNaN(num) && num >= 1 && num <= 9) {
+      const list = Array.from(dockItems.values());
+      const target = list[num - 1];
+      if (target) {
+        const tileEl = document.getElementById(`dockTile_${num - 1}`);
+        if (tileEl) flashTile(tileEl);
+        transferPatch(target.bank, target.slot, false, null, target.tweaks || null);
+      }
+    }
+  });
+
+  function unpackDx7Voice(p) {
+    const u = new Uint8Array(155);
+    let uIdx = 0, pIdx = 0;
+    
+    for (let op = 0; op < 6; op++) {
+      for (let i = 0; i < 11; i++) u[uIdx++] = p[pIdx++];
+      
+      let b11 = p[pIdx++];
+      u[uIdx++] = b11 & 0x03;
+      u[uIdx++] = (b11 >> 2) & 0x03;
+
+      let b12 = p[pIdx++];
+      let rs = b12 & 0x07;
+      let detune = (b12 >> 3) & 0x0F;
+
+      let b13 = p[pIdx++];
+      let ams = b13 & 0x03;
+      let kvs = (b13 >> 2) & 0x07;
+
+      let outLevel = p[pIdx++];
+
+      let b15 = p[pIdx++];
+      let mode = b15 & 0x01;
+      let coarse = (b15 >> 1) & 0x1F;
+
+      let fine = p[pIdx++];
+
+      u[uIdx++] = rs;
+      u[uIdx++] = ams;
+      u[uIdx++] = kvs;
+      u[uIdx++] = outLevel;
+      u[uIdx++] = mode;
+      u[uIdx++] = coarse;
+      u[uIdx++] = fine;
+      u[uIdx++] = detune;
+    }
+
+    for (let i = 0; i < 8; i++) u[126 + i] = p[102 + i];
+    u[134] = p[110] & 0x1F; // Algorithm
+
+    let b111 = p[111];
+    u[135] = b111 & 0x07;
+    u[136] = (b111 >> 3) & 0x01;
+
+    for (let i = 0; i < 4; i++) u[137 + i] = p[112 + i];
+
+    let b116 = p[116];
+    u[141] = b116 & 0x01;
+    u[142] = (b116 >> 1) & 0x07;
+    u[143] = (b116 >> 4) & 0x07;
+
+    u[144] = p[117]; // Transpose
+
+    for (let i = 0; i < 10; i++) u[145 + i] = p[118 + i];
+
+    return u;
+  }
+
+  function buildSingleVoiceSysex(unpackedVoice, channel = 0) {
+    let sum = 0;
+    for (let i = 0; i < 155; i++) sum += unpackedVoice[i];
+    const checksum = (-sum) & 0x7F;
+    const sysex = new Uint8Array(163);
+    sysex[0] = 0xF0; sysex[1] = 0x43; sysex[2] = channel & 0x0F; sysex[3] = 0x00;
+    sysex[4] = 0x01; sysex[5] = 0x1B;
+    sysex.set(unpackedVoice, 6);
+    sysex[161] = checksum; sysex[162] = 0xF7;
+    return sysex;
+  }
+
+  async function getBankData(bankFile) {
+    let bankBytes = bankCache.get(bankFile);
+    if (!bankBytes) {
+      const res = await fetch(`deduped_banks/${bankFile}`);
+      if (!res.ok) throw new Error(`Could not load bank: deduped_banks/${bankFile}`);
+      const buffer = await res.arrayBuffer();
+      bankBytes = new Uint8Array(buffer);
+      bankCache.set(bankFile, bankBytes);
+    }
+    return bankBytes;
+  }
+
+  // --- CORE PATCH TRANSFER ---
+  async function transferPatch(bankFile, slotIndex, playChord, btnElement, savedTweaks = null) {
+    if (!selectedOutput) {
+      alert("Please select your MIDI port in the bottom panel.");
+      return;
+    }
+
+    const channel = parseInt(document.getElementById('midiChannelSelect').value, 10);
+    const slotNum = parseInt(slotIndex, 10);
+    const isTableBtn = btnElement && (btnElement.classList.contains('play-btn') || btnElement.classList.contains('load-btn'));
+    const isTilePlayBtn = btnElement && btnElement.classList.contains('tile-play-btn');
+    const origText = isTableBtn ? btnElement.innerText : '';
+
+    if (isTableBtn) {
+      btnElement.innerText = playChord ? "🔊 Playing" : "✓ Loaded";
+      btnElement.disabled = true;
+    } else if (isTilePlayBtn) {
+      btnElement.style.color = '#fff';
+    }
+
+    try {
+      const bankBytes = await getBankData(bankFile);
+      const offset = (bankBytes.length >= 4104 ? 6 : 0) + ((slotNum - 1) * 128);
+      const packedVoice = bankBytes.slice(offset, offset + 128);
+      const unpackedVoice = unpackDx7Voice(packedVoice);
+      const sysex = buildSingleVoiceSysex(unpackedVoice, channel);
+
+      if (noteOnTimeout) clearTimeout(noteOnTimeout);
+      if (noteOffTimeout) clearTimeout(noteOffTimeout);
+
+      // 1. Load native DX7 patch to Volca Edit Buffer
+      selectedOutput.send(sysex);
+
+      // 2. Adjust onscreen dials and Volca offsets
+      setTimeout(() => {
+        if (savedTweaks) {
+          Object.keys(savedTweaks).forEach(cc => {
+            const val = savedTweaks[cc];
+            setSliderValue(cc, val);
+            let targetVal = val;
+            if (parseInt(cc) === 48) targetVal = Math.min(31, Math.floor((val / 128) * 32));
+            sendVolcaCC(cc, targetVal);
+          });
+        } else {
+          setSliderValue(42, 64); setSliderValue(43, 64);
+          setSliderValue(44, 64); setSliderValue(45, 64);
+
+          const trueLfoRate = unpackedVoice[137];
+          const trueLfoDepth = unpackedVoice[140];
+          const trueAlgorithm = unpackedVoice[134];
+          const trueTranspose = unpackedVoice[144];
+
+          setSliderValue(46, trueLfoRate);
+          setSliderValue(47, trueLfoDepth);
+          setSliderValue(48, Math.floor((trueAlgorithm / 31) * 127));
+          setSliderValue(40, trueTranspose);
+        }
+      }, 80);
+
+      // 3. Play Audition Chord
+      if (playChord) {
+        noteOnTimeout = setTimeout(() => {
+          const chord = [48, 55, 60, 64];
+          chord.forEach(note => selectedOutput.send([0x90 | channel, note, 100]));
+          noteOffTimeout = setTimeout(() => {
+            chord.forEach(note => selectedOutput.send([0x80 | channel, note, 0]));
+            if (isTableBtn) { btnElement.innerText = origText; btnElement.disabled = false; }
+            else if (isTilePlayBtn) btnElement.style.color = '';
+          }, 1400);
+        }, 150);
+      } else {
+        setTimeout(() => {
+          if (isTableBtn) { btnElement.innerText = origText; btnElement.disabled = false; }
+        }, 700);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+      if (isTableBtn) { btnElement.innerText = origText; btnElement.disabled = false; }
+      else if (isTilePlayBtn) btnElement.style.color = '';
+    }
+  }
+
+  function initWebMIDI() {
+    if (!navigator.requestMIDIAccess) {
+      document.getElementById('midiStatusText').innerText = "Web MIDI not supported";
+      return;
+    }
+    navigator.requestMIDIAccess({ sysex: true }).then(access => {
+      midiAccess = access;
+      document.getElementById('midiDot').classList.add('connected');
+      document.getElementById('midiStatusText').innerText = "MIDI Ready";
+      populateMidiPorts();
+      midiAccess.onstatechange = populateMidiPorts;
+    }).catch(err => {
+      document.getElementById('midiStatusText').innerText = "SysEx Access Denied";
+      console.warn("MIDI Error:", err);
+    });
+  }
+
+  function populateMidiPorts() {
+    const outSelect = document.getElementById('midiOutSelect');
+    outSelect.innerHTML = '';
+    const outputs = Array.from(midiAccess.outputs.values());
+    if (outputs.length === 0) {
+      outSelect.innerHTML = '<option value="">No MIDI ports found</option>';
+      selectedOutput = null;
+    } else {
+      const savedOutId = localStorage.getItem('selectedMidiOutput');
+      let foundOutSaved = false;
+      outputs.forEach(output => {
+        const opt = document.createElement('option');
+        opt.value = output.id;
+        opt.text = output.name || `MIDI Out ${output.id}`;
+        if (output.id === savedOutId) { opt.selected = true; selectedOutput = output; foundOutSaved = true; }
+        outSelect.appendChild(opt);
+      });
+      if (!foundOutSaved && outputs.length > 0) {
+        selectedOutput = outputs[0];
+        localStorage.setItem('selectedMidiOutput', selectedOutput.id);
+      }
+    }
+
+    const inSelect = document.getElementById('midiInSelect');
+    inSelect.innerHTML = '';
+    const inputs = Array.from(midiAccess.inputs.values());
+    if (inputs.length === 0) {
+      inSelect.innerHTML = '<option value="">No MIDI inputs found</option>';
+      selectedInput = null;
+    } else {
+      const savedInId = localStorage.getItem('selectedMidiInput');
+      let foundInSaved = false;
+      inputs.forEach(input => {
+        const opt = document.createElement('option');
+        opt.value = input.id;
+        opt.text = input.name || `MIDI In ${input.id}`;
+        if (input.id === savedInId || (!savedInId && (input.name || '').includes('Launchkey') && !(input.name || '').includes('InControl') && !(input.name || '').includes('MIDIIN2'))) {
+          opt.selected = true; attachMidiInput(input); foundInSaved = true;
+        }
+        inSelect.appendChild(opt);
+      });
+      if (!foundInSaved && inputs.length > 0) attachMidiInput(inputs[0]);
+    }
+  }
+
+  function attachMidiInput(input) {
+    if (selectedInput) selectedInput.onmidimessage = null;
+    selectedInput = input;
+    selectedInput.onmidimessage = handleMidiInMessage;
+    localStorage.setItem('selectedMidiInput', input.id);
+  }
+
+  document.getElementById('midiOutSelect').addEventListener('change', (e) => {
+    selectedOutput = midiAccess.outputs.get(e.target.value);
+    localStorage.setItem('selectedMidiOutput', e.target.value);
+  });
+  document.getElementById('midiInSelect').addEventListener('change', (e) => {
+    const input = midiAccess.inputs.get(e.target.value);
+    if (input) attachMidiInput(input);
+  });
+
+  // Data Loading & Rendering
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageItems = filteredPatches.slice(start, start + PAGE_SIZE);
+
+    if (pageItems.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 30px; color: var(--muted);">No matching patches found.</td></tr>`;
+      return;
+    }
+
+    pageItems.forEach(p => {
+      const key = getPatchKey(p.bank, p.slot);
+      const isFav = favorites.has(key);
+      const isDocked = dockItems.has(key);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div class="action-btn-group">
+            <button class="dl-btn" title="Download standalone .syx for Synthmata / Dexed" onclick="downloadPatchSyx('${escapeHtml(p.bank)}', '${escapeHtml(p.slot)}', '${escapeHtml(p.name)}', this)">⬇ .syx</button>
+            <button class="play-btn" title="Load & Play Audition Chord" onclick="transferPatch('${escapeHtml(p.bank)}', '${escapeHtml(p.slot)}', true, this, null)">▶ Play</button>
+            <button class="load-btn" title="Silent Load to Volca Edit Buffer" onclick="transferPatch('${escapeHtml(p.bank)}', '${escapeHtml(p.slot)}', false, this, null)">⚡ Load</button>
+          </div>
+        </td>
+        <td>
+          <div class="patch-name-cell">
+            <button class="star-btn ${isFav ? 'starred' : ''}" title="${isFav ? 'Remove from favorites library' : 'Bookmark to favorites library'}" onclick="toggleFavorite('${escapeHtml(p.bank)}', '${escapeHtml(p.slot)}', '${escapeHtml(p.name)}')">★</button>
+            <button class="dock-pin-btn ${isDocked ? 'pinned' : ''}" title="${isDocked ? 'Unpin from Live Performance Dock' : 'Pin to Live Performance Dock'}" onclick="toggleDock('${escapeHtml(p.bank)}', '${escapeHtml(p.slot)}', '${escapeHtml(p.name)}')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="17" x2="12" y2="22"></line>
+                <path d="M5 17h14v-1.5a2 2 0 0 0-1.1-1.8L16 12.5V5h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v7.5l-1.9 1.2A2 2 0 0 0 5 15.5V17z"></path>
+              </svg>
+            </button>
+            <span>${escapeHtml(p.name)}</span>
+          </div>
+        </td>
+        <td>
+          <a href="deduped_banks/${escapeHtml(p.bank)}" download="${escapeHtml(p.bank)}" class="bank-badge" title="Click to download entire 32-patch .syx cartridge">
+            ${escapeHtml(p.bank)}
+          </a>
+        </td>
+        <td><span class="slot-badge">${escapeHtml(p.slot)}</span></td>
+        <td class="source-text">${escapeHtml(p.source)} (Slot ${escapeHtml(p.sourceSlot)})</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('pageLabel').innerText = `Page ${currentPage} of ${Math.max(1, Math.ceil(filteredPatches.length / PAGE_SIZE))}`;
+    document.getElementById('prevBtn').disabled = currentPage === 1;
+    document.getElementById('nextBtn').disabled = start + PAGE_SIZE >= filteredPatches.length;
+  }
+
+  function filterData(query) {
+    const rawQuery = (query || '').trim().toUpperCase();
+    let base = allPatches;
+
+    if (favFilterActive) {
+      base = base.filter(p => favorites.has(getPatchKey(p.bank, p.slot)));
+    }
+
+    if (!rawQuery) {
+      filteredPatches = base;
+    } else {
+      const terms = rawQuery.split('|').map(t => t.trim()).filter(t => t.length > 0);
+      filteredPatches = base.filter(p => {
+        const name = p.name.toUpperCase();
+        const bank = p.bank.toUpperCase();
+        const src = p.source.toUpperCase();
+        return terms.some(term => name.includes(term) || bank.includes(term) || src.includes(term));
+      });
+    }
+    currentPage = 1;
+    updateStats();
+    renderTable();
+  }
+
+  function updateStats() {
+    document.getElementById('matchCount').innerText = `${filteredPatches.length.toLocaleString()} of ${allPatches.length.toLocaleString()} patches matched`;
+  }
+
+  function applyTag(tagExpression) {
+    document.getElementById('search').value = tagExpression;
+    filterData(tagExpression);
+  }
+
+  function changePage(delta) {
+    currentPage += delta;
+    renderTable();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+  }
+
+  document.getElementById('search').addEventListener('input', (e) => filterData(e.target.value));
+
+  // SysEx Bank Exporter
+  async function exportFavoritesBank() {
+    if (favorites.size === 0) return;
+    const btn = document.getElementById('exportBankBtn');
+    const origText = btn.innerText;
+    btn.innerText = "⏳ Compiling..."; btn.disabled = true;
+    try {
+      const favList = Array.from(favorites.values());
+      const numBanks = Math.ceil(favList.length / 32);
+      const initVoice = new Uint8Array(128);
+      for (let op = 0; op < 6; op++) {
+        let base = op * 17;
+        initVoice[base] = 99; initVoice[base+1] = 99; initVoice[base+2] = 99; initVoice[base+3] = 99;
+        initVoice[base+4] = 99; initVoice[base+5] = 99; initVoice[base+6] = 99; initVoice[base+7] = 0;
+        initVoice[base+12] = 56; initVoice[base+15] = 2;
+      }
+      initVoice[85 + 14] = 99; initVoice[110] = 31; initVoice[111] = 8; initVoice[117] = 24;
+      const nameStr = "INIT VOICE";
+      for (let c = 0; c < 10; c++) initVoice[118 + c] = nameStr.charCodeAt(c);
+
+      for (let b = 0; b < numBanks; b++) {
+        const bankLetter = String.fromCharCode(65 + b);
+        const slice = favList.slice(b * 32, (b + 1) * 32);
+        const payload = new Uint8Array(4096);
+        for (let i = 0; i < 32; i++) {
+          if (i < slice.length) {
+            const item = slice[i];
+            const bankBytes = await getBankData(item.bank);
+            const slotNum = parseInt(item.slot, 10);
+            const offset = (bankBytes.length >= 4104 ? 6 : 0) + ((slotNum - 1) * 128);
+            payload.set(bankBytes.slice(offset, offset + 128), i * 128);
+          } else {
+            payload.set(initVoice, i * 128);
+          }
+        }
+        let sum = 0; for (let i = 0; i < 4096; i++) sum += payload[i];
+        const checksum = (-sum) & 0x7F;
+        const sysex = new Uint8Array(4104);
+        sysex[0] = 0xF0; sysex[1] = 0x43; sysex[2] = 0x00; sysex[3] = 0x09; sysex[4] = 0x20; sysex[5] = 0x00;
+        sysex.set(payload, 6); sysex[4102] = checksum; sysex[4103] = 0xF7;
+        const blob = new Blob([sysex], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = numBanks === 1 ? `Favorites_Bank.syx` : `Favorites_Bank_${bankLetter}.syx`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        if (b < numBanks - 1) await new Promise(r => setTimeout(r, 400));
+      }
+      btn.innerText = "✓ Exported!"; setTimeout(() => { btn.disabled = false; updateFavoritesUI(); }, 1200);
+    } catch (err) { alert("Bank export error: " + err.message); btn.disabled = false; updateFavoritesUI(); }
+  }
+
+  function parseCSV(text) {
+    const lines = text.trim().split(/\r\n|\n/);
+    const data = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      const cols = [];
+      let match, regex = /(?:,|\n|^)("(?:(?:"")*[^"]*)*"|[^",\n]*|(?:\n|$))/g;
+      while ((match = regex.exec(line)) && match.index < line.length) {
+        let val = match[1] ? match[1].replace(/^"|"$/g, '').replace(/""/g, '"') : match[0].replace(/^,/, '');
+        cols.push(val);
+      }
+      if (cols.length >= 4) {
+        data.push({ name: cols[0], bank: cols[1], slot: cols[2], source: cols[3], sourceSlot: cols[4] || '' });
+      }
+    }
+    return data;
+  }
+
+  fetch('unique_patches.csv')
+    .then(res => { if (!res.ok) throw new Error("Missing csv"); return res.text(); })
+    .then(text => {
+      allPatches = parseCSV(text);
+      filteredPatches = allPatches;
+      loadStorage();
+      updateStats();
+      renderTable();
+      initWebMIDI();
+    }).catch(err => {
+      console.error(err);
+      document.getElementById('matchCount').innerHTML = `<span style="color: #ff6b6b;">Error: unique_patches.csv not found or initialization failed.</span>`;
+    });
+</script>
+</body>
+</html>
