@@ -16,8 +16,6 @@ This is simply the setup I wanted for myself.  If you find it useful, let me kno
 * Download the Sysex patch file.
 * Create a set of favorite set of 32 patches to load directly.
 
-There are also some bookmarks at the bottom of the page to useful pages on the web.
-
 Note: Requires a Chrome Browser to work correctly.  Give it access to Midi.
 
 I'm hosting the server side with an installed copy of Apache2 running on Linux Mint.
