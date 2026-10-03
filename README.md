@@ -20,3 +20,6 @@ There are also some bookmarks at the bottom of the page to useful pages on the w
 
 Note: Requires a Chrome Browser to work correctly.  Give it access to Midi.
 
+I'm hosting the server side with an installed copy of Apache2 running on Linux Mint.
+Simply copy the files from the release .zip to your /var/www/html folder and you should be good to go.
+ 
